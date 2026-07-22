@@ -111,7 +111,7 @@ class MapInteractivity {
       this.map.once("click", this.handleInfoOnMap);
       return;
     }
-    if (Globals.backButtonState.split("-")[0] === "position") {
+    if (Globals.backButtonState.split("-")[0].split("%")[0] === "position") {
       DOM.$backTopLeftBtn.click();
     }
     let bbox = [
@@ -203,7 +203,7 @@ class MapInteractivity {
           hideCallback: deselectPoiCallback,
           type: "osm",
         }).then(() => {
-          Globals.menu.open("position");
+          Globals.menu.open("position%poi");
         });
         this.map.once("click", this.handleInfoOnMap);
         return;
@@ -311,7 +311,7 @@ class MapInteractivity {
           type: type,
           feature: features[0],
         }).then(() => {
-          Globals.menu.open("position");
+          Globals.menu.open("position%" + features[0].layer.id.split("$$$")[1]);
           if (type === "geotrek" || type === "sentiers-balises") {
             Globals.currentScrollIndex = 1;
             Globals.menu.updateScrollAnchors();
@@ -374,7 +374,7 @@ class MapInteractivity {
           html2: resp.html2,
           htmlBeforeAddress: resp.htmlBeforeAddress,
         });
-        Globals.menu.open("position");
+        Globals.menu.open("position%" + resp.layer);
         this.map.once("click", this.handleInfoOnMap);
         return;
       }).catch(async () => {
@@ -390,7 +390,7 @@ class MapInteractivity {
             html2: featureHTML.after,
             htmlBeforeAddress: featureHTML.htmlBeforeAddress,
           });
-          Globals.menu.open("position");
+          Globals.menu.open("position%planinteractif");
           this.selectedCleabs = features[0].properties.cleabs;
           this.selectedSource = "bdtopo";
           this.selectedFeatureType = features[0].geometry.type;
@@ -589,14 +589,21 @@ class MapInteractivity {
       return response;
     });
 
-    let responsesArray = Promise.allSettled(promisesArray);
-    let response = (await responsesArray).find(r => r.status == "fulfilled");
-    if (response) {
-      return response.value;
+    const responsesArray = await Promise.allSettled(promisesArray);
+    const selectedResponseIndex = responsesArray.findIndex((result) => {
+      return result.status === "fulfilled" && result.value;
+    });
+
+    if (selectedResponseIndex !== -1) {
+      const selectedResponse = responsesArray[selectedResponseIndex].value;
+      const selectedLayer = GFIArray[selectedResponseIndex];
+      return {
+        ...selectedResponse,
+        layer: selectedLayer[0],
+      };
     }
-    else {
-      throw new Error(this.emptyError);
-    }
+
+    throw new Error(this.emptyError);
   }
 
   /**
